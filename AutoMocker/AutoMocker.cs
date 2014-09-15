@@ -36,9 +36,6 @@ namespace NeedfulThings.AutoMocking
 
         public T Get<T>() where T : class
         {
-            if (_classUnderTest.IsValueCreated)
-                throw new InvalidOperationException();
-
             object dependency;
             if (!_parameters.TryGetValue(typeof (T), out dependency))
             {

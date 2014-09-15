@@ -61,12 +61,12 @@ namespace NeedfulThings.AutoMocking
         }
 
         [Test]
-        public void Should_throw_if_dependency_requested_after_cut_was_initialized()
+        public void Should_return_dependency_even_after_cut_was_initialized()
         {
             var autoMocker = new RhinoAutoMocker<TestClass>();
             autoMocker.ClassUnderTest.Bar.VoidMethod();
 
-            Assert.Throws<InvalidOperationException>(() => autoMocker.Get<IBar>());
+            var bar = autoMocker.Get<IBar>();
         }
 
         [Test]
