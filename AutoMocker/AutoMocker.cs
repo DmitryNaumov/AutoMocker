@@ -36,25 +36,30 @@ namespace NeedfulThings.AutoMocking
 
         public T Get<T>() where T : class
         {
-            object dependency;
-            if (!_parameters.TryGetValue(typeof (T), out dependency))
+            return (T) _proxyFactory.Unwrap(GetMock(typeof (T)));
+        }
+
+        public object GetMock(Type type)
+        {
+            object mock;
+            if (!_parameters.TryGetValue(type, out mock))
             {
                 throw new InvalidOperationException();
             }
 
-            if (dependency == null)
+            if (mock == null)
             {
-                dependency = _proxyFactory.CreateProxy(typeof (T));
-                _parameters[typeof (T)] = dependency;
+                mock = _proxyFactory.CreateProxy(type);
+                _parameters[type] = mock;
             }
 
-            return (T) dependency;
+            return mock;
         }
 
         private TClass CreateInstance(ConstructorInfo ctor)
         {
             object[] parameters = ctor.GetParameters()
-                .Select(pi => _parameters[pi.ParameterType] ?? _proxyFactory.CreateProxy(pi.ParameterType))
+                .Select(pi => _proxyFactory.Unwrap(_parameters[pi.ParameterType] ?? _proxyFactory.CreateProxy(pi.ParameterType)))
                 .ToArray();
 
             return (TClass) ctor.Invoke(parameters);

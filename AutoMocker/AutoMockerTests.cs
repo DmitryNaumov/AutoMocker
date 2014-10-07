@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
+using Moq;
 using NUnit.Framework;
-using Rhino.Mocks;
+using NUnit.Framework.Constraints;
 using Rhino.Mocks.Exceptions;
 
 namespace NeedfulThings.AutoMocking
@@ -8,114 +10,71 @@ namespace NeedfulThings.AutoMocking
     [TestFixture]
     public class AutoMockerTests
     {
-        [Test]
-        public void Should_not_throw_if_dependency_was_not_setup_and_there_is_no_side_effect()
-        {
-            var autoMocker = new RhinoAutoMocker<TestClass>();
+        private static readonly IResolveConstraint ExpectedExceptions =
+            new OrConstraint(new ExactTypeConstraint(typeof (ExpectationViolationException)), new ExactTypeConstraint(typeof(MockException)));
 
+        [TestCaseSource("AutoMockerFactory")]
+        public void Should_not_throw_if_dependency_was_not_setup_and_there_is_no_side_effect(AutoMocker<TestClass> autoMocker)
+        {
             autoMocker.ClassUnderTest.NoSideEffect();
         }
 
-        [Test]
-        public void Should_not_throw_if_dependency_was_setup()
+        [TestCaseSource("AutoMockerFactory")]
+        public void Should_pass_same_dependency_to_ctor(AutoMocker<TestClass> autoMocker)
         {
-            var autoMocker = new RhinoAutoMocker<TestClass>();
-
-            // request dependency to setup
-            var foo = autoMocker.Get<IFoo>();
-            foo.Expect(x => x.Method()).Return(1);
-
-            autoMocker.ClassUnderTest.UseFoo();
-        }
-
-        [Test]
-        public void Should_pass_return_value_from_dependency()
-        {
-            var autoMocker = new RhinoAutoMocker<TestClass>();
-
-            var foo = autoMocker.Get<IFoo>();
-            foo.Expect(x => x.Method()).Return(42);
-
-            int value = autoMocker.ClassUnderTest.UseFoo();
-
-            Assert.AreEqual(42, value);
-            foo.VerifyAllExpectations();
-        }
-
-        [Test]
-        public void Should_pass_same_dependency_to_ctor()
-        {
-            var autoMocker = new RhinoAutoMocker<TestClass>();
-
             var foo = autoMocker.Get<IFoo>();
             Assert.AreSame(foo, autoMocker.ClassUnderTest.Foo);
         }
 
-        [Test]
-        public void Should_return_dependency()
+        [TestCaseSource("AutoMockerFactory")]
+        public void Should_return_dependency(AutoMocker<TestClass> autoMocker)
         {
-            var autoMocker = new RhinoAutoMocker<TestClass>();
-
             var foo = autoMocker.Get<IFoo>();
             Assert.NotNull(foo);
         }
 
-        [Test]
-        public void Should_return_dependency_even_after_cut_was_initialized()
+        [TestCaseSource("AutoMockerFactory")]
+        public void Should_return_dependency_even_after_cut_was_initialized(AutoMocker<TestClass> autoMocker)
         {
-            var autoMocker = new RhinoAutoMocker<TestClass>();
             autoMocker.ClassUnderTest.Bar.VoidMethod();
 
             var bar = autoMocker.Get<IBar>();
         }
 
-        [Test]
-        public void Should_throw_if_dependency_was_not_setup_and_method_called_has_out_param()
+        [TestCaseSource("AutoMockerFactory")]
+        public void Should_throw_if_dependency_was_not_setup_and_method_called_has_out_param(AutoMocker<TestClass> autoMocker)
         {
-            var autoMocker = new RhinoAutoMocker<TestClass>();
-
-            Assert.Throws<ExpectationViolationException>(() => autoMocker.ClassUnderTest.OutParam());
+            Assert.Throws(ExpectedExceptions, () => autoMocker.ClassUnderTest.OutParam());
         }
 
-        [Test]
-        public void Should_throw_if_dependency_was_not_setup_and_method_called_has_ref_param()
+        [TestCaseSource("AutoMockerFactory")]
+        public void Should_throw_if_dependency_was_not_setup_and_method_called_has_ref_param(AutoMocker<TestClass> autoMocker)
         {
-            var autoMocker = new RhinoAutoMocker<TestClass>();
-
-            Assert.Throws<ExpectationViolationException>(() => autoMocker.ClassUnderTest.RefParam());
+            Assert.Throws(ExpectedExceptions, () => autoMocker.ClassUnderTest.RefParam());
         }
 
-        [Test]
-        public void Should_throw_if_dependency_was_not_setup_and_method_called_has_return_value()
+        [TestCaseSource("AutoMockerFactory")]
+        public void Should_throw_if_dependency_was_not_setup_and_method_called_has_return_value(AutoMocker<TestClass> autoMocker)
         {
-            var autoMocker = new RhinoAutoMocker<TestClass>();
-
-            Assert.Throws<ExpectationViolationException>(() => autoMocker.ClassUnderTest.HasReturnValue());
+            Assert.Throws(ExpectedExceptions, () => autoMocker.ClassUnderTest.HasReturnValue());
         }
 
-        [Test]
-        public void Should_throw_if_dependency_was_not_setup_and_property_getter_called()
+        [TestCaseSource("AutoMockerFactory")]
+        public void Should_throw_if_dependency_was_not_setup_and_property_getter_called(AutoMocker<TestClass> autoMocker)
         {
-            var autoMocker = new RhinoAutoMocker<TestClass>();
-
-            Assert.Throws<ExpectationViolationException>(() => autoMocker.ClassUnderTest.RefParam());
+            Assert.Throws(ExpectedExceptions, () => autoMocker.ClassUnderTest.PropertyGetter());
         }
 
-        [Test]
-        public void Should_throw_if_wrong_dependency_requested()
+        [TestCaseSource("AutoMockerFactory")]
+        public void Should_throw_if_wrong_dependency_requested(AutoMocker<TestClass> autoMocker)
         {
-            var autoMocker = new RhinoAutoMocker<TestClass>();
-
             Assert.Throws<InvalidOperationException>(() => autoMocker.Get<IBaz>());
         }
 
-        [Test]
-        public void Should_use_ctor_with_most_dependencies()
+        private IEnumerable<AutoMocker<TestClass>> AutoMockerFactory()
         {
-            var autoMocker = new RhinoAutoMocker<TestClass>();
-
-            Assert.NotNull(autoMocker.ClassUnderTest.Foo);
-            Assert.NotNull(autoMocker.ClassUnderTest.Bar);
+            yield return new RhinoAutoMocker<TestClass>();
+            yield return new MoqAutoMocker<TestClass>();
         }
     }
 
@@ -131,6 +90,8 @@ namespace NeedfulThings.AutoMocking
         int HasReturnValue();
 
         void HasArgument(int i);
+        
+        void HasMultipleArgument(int i, string s, double d);
 
         void OutParam(out string s);
 
@@ -143,7 +104,7 @@ namespace NeedfulThings.AutoMocking
     {
     }
 
-    internal class TestClass
+    public class TestClass
     {
         public TestClass(IFoo foo)
         {
@@ -180,6 +141,7 @@ namespace NeedfulThings.AutoMocking
             Bar.Value = 42;
             Bar.VoidMethod();
             Bar.HasArgument(42);
+            Bar.HasMultipleArgument(42, "bar", 1.0);
         }
 
         public void OutParam()
